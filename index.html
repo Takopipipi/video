@@ -2,188 +2,132 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Совместный просмотр VK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Кино-Комната 🎥</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg-color: #0f0f0f;
+            --card-bg: #1e1e1e;
+            --accent-color: #7c4dff;
+            --text-color: #e0e0e0;
+            --msg-own: #4a148c;
+            --msg-other: #333333;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 10px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .room-info {
-            background: rgba(255,255,255,0.2);
-            padding: 10px;
-            border-radius: 10px;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-
-        .share-link {
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .share-link:hover {
-            background: rgba(255,255,255,0.4);
-        }
-
-        .share-link input {
-            background: transparent;
-            border: none;
-            color: white;
-            width: 100%;
-            text-align: center;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .main-content {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 220px);
-            min-height: 500px;
-        }
-
-        @media (min-width: 768px) {
-            .main-content {
-                flex-direction: row;
-            }
-        }
-
-        .video-section {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .video-controls {
-            margin-bottom: 15px;
-        }
-
-        .video-controls input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #667eea;
-            border-radius: 10px;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-
-        .video-controls button {
-            width: 100%;
-            padding: 12px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
-
-        .video-controls button:hover {
-            transform: translateY(-2px);
-        }
-
-        .video-controls button:active {
-            transform: translateY(0);
-        }
-
-        .video-controls button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        #videoContainer {
-            flex: 1;
-            background: #000;
-            border-radius: 10px;
             overflow: hidden;
-            position: relative;
-            min-height: 300px;
         }
 
-        #videoContainer iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .video-placeholder {
+        /* Шапка */
+        header {
+            background: var(--card-bg);
+            padding: 10px 20px;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #666;
-            text-align: center;
-            padding: 20px;
+            border-bottom: 1px solid #333;
+            z-index: 10;
         }
 
-        .chat-section {
-            width: 100%;
-            background: #f5f5f5;
+        .logo { color: var(--accent-color); font-weight: bold; font-size: 1.2rem; }
+        
+        .room-tag {
+            font-size: 0.8rem;
+            background: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        /* Основной контейнер */
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            flex-direction: row;
+        }
+
+        /* Секция видео */
+        .video-side {
+            flex: 3;
             display: flex;
             flex-direction: column;
-            border-top: 1px solid #ddd;
-        }
-
-        @media (min-width: 768px) {
-            .chat-section {
-                width: 350px;
-                border-top: none;
-                border-left: 1px solid #ddd;
-            }
-        }
-
-        .chat-header {
             padding: 15px;
-            background: white;
-            border-bottom: 1px solid #ddd;
-            font-weight: 600;
+            gap: 10px;
         }
 
-        .online-users {
-            padding: 10px 15px;
-            background: #e8f5e9;
-            border-bottom: 1px solid #ddd;
-            font-size: 14px;
-            color: #2e7d32;
+        #videoWrapper {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
+
+        iframe { width: 100%; height: 100%; border: none; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: #2b2b2b;
+            border: 1px solid #444;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--accent-color); }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* Секция чата */
+        .chat-side {
+            flex: 1;
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #333;
+            min-width: 320px;
+        }
+
+        .online-status {
+            padding: 10px 15px;
+            background: #252525;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #333;
+            color: #aaa;
+        }
+
+        .online-status b { color: var(--accent-color); }
 
         #messages {
             flex: 1;
@@ -191,447 +135,212 @@
             padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            max-height: 300px;
+            gap: 12px;
         }
 
-        @media (min-width: 768px) {
-            #messages {
-                max-height: none;
-            }
-        }
-
-        .message {
-            padding: 10px 12px;
+        .msg {
+            max-width: 85%;
+            padding: 8px 12px;
             border-radius: 12px;
-            max-width: 80%;
-            word-wrap: break-word;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message.own {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message.other {
-            background: white;
-            align-self: flex-start;
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .message-author {
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 4px;
-            opacity: 0.8;
-        }
-
-        .message.other .message-author {
-            color: #667eea;
-        }
-
-        .message-text {
-            font-size: 14px;
+            font-size: 0.95rem;
+            position: relative;
             line-height: 1.4;
         }
 
-        .message-time {
-            font-size: 11px;
-            margin-top: 4px;
-            opacity: 0.7;
-        }
+        .msg.own { align-self: flex-end; background: var(--msg-own); border-bottom-right-radius: 2px; }
+        .msg.other { align-self: flex-start; background: var(--msg-other); border-bottom-left-radius: 2px; }
 
-        .system-message {
-            text-align: center;
-            color: #666;
-            font-size: 13px;
-            font-style: italic;
-            padding: 8px;
-            background: rgba(0,0,0,0.05);
-            border-radius: 8px;
-            align-self: center;
-        }
+        .msg-info { font-size: 0.7rem; opacity: 0.6; margin-bottom: 3px; font-weight: bold; }
+        .msg-time { font-size: 0.65rem; opacity: 0.4; text-align: right; margin-top: 3px; }
 
-        .chat-input-container {
+        .chat-input {
             padding: 15px;
-            background: white;
-            border-top: 1px solid #ddd;
             display: flex;
-            gap: 10px;
+            gap: 8px;
+            border-top: 1px solid #333;
         }
 
-        #messageInput {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 25px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.3s;
+        /* Мобильная адаптация */
+        @media (max-width: 768px) {
+            main { flex-direction: column; overflow-y: auto; }
+            .chat-side { flex: none; height: 500px; border-left: none; border-top: 1px solid #333; }
+            .video-side { flex: none; }
+            .controls { flex-wrap: wrap; }
+            .controls input#nameInput { width: 100%; }
         }
 
-        #messageInput:focus {
-            border-color: #667eea;
-        }
-
-        #sendBtn {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
-
-        #sendBtn:hover {
-            transform: scale(1.05);
-        }
-
-        .instructions {
-            background: #fff3cd;
-            padding: 15px;
-            margin: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #ffc107;
-        }
-
-        .instructions h3 {
-            color: #856404;
-            margin-bottom: 10px;
-        }
-
-        .instructions ol {
-            margin-left: 20px;
-            color: #856404;
-        }
-
-        .instructions li {
-            margin: 5px 0;
-        }
-
-        .toast {
+        /* Уведомления */
+        #toast {
             position: fixed;
-            bottom: 20px;
+            top: 20px;
             right: 20px;
-            background: #4caf50;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 1000;
+            background: var(--accent-color);
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            animation: fadeIn 0.3s;
+            z-index: 100;
         }
-
-        .toast.show {
-            opacity: 1;
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>💑 Совместный просмотр VK видео</h1>
-            <div class="room-info">
-                <div>Комната: <strong id="roomId">Загрузка...</strong></div>
-                <div>Ваше имя: <strong id="userName">Гость</strong></div>
-            </div>
-            <div class="share-link" onclick="copyShareLink()" title="Нажмите, чтобы скопировать">
-                <div style="font-size: 12px; margin-bottom: 5px;">📋 Ссылка для партнера (нажмите, чтобы скопировать):</div>
-                <input type="text" id="shareLink" readonly>
+
+<header>
+    <div class="logo">WATCH TOGETHER 🍿</div>
+    <div class="room-tag" id="roomDisplay">Комната: ...</div>
+</header>
+
+<main>
+    <div class="video-side">
+        <div id="videoWrapper">
+            <div style="display:flex; height:100%; align-items:center; justify-content:center; color:#666; text-align:center; padding:20px;">
+                Здесь будет видео. Вставьте ссылку ниже 👇
             </div>
         </div>
-
-        <div class="instructions">
-            <h3>📖 Как использовать:</h3>
-            <ol>
-                <li>Введите свое имя в поле ниже</li>
-                <li>Скопируйте ссылку для партнера (вверху) и отправьте своей девушке</li>
-                <li>Откройте видео ВКонтакте → "Поделиться" → "Скопировать ссылку"</li>
-                <li>Вставьте ссылку в поле и нажмите "Загрузить видео"</li>
-                <li>Наслаждайтесь синхронным просмотром! 🎬</li>
-            </ol>
-        </div>
-
-        <div class="main-content">
-            <div class="video-section">
-                <div class="video-controls">
-                    <input type="text" id="nameInput" placeholder="Введите ваше имя..." value="">
-                    <input type="text" id="videoUrl" placeholder="Ссылка на видео VK (например: https://vk.com/video-123456_789012345)">
-                    <button onclick="loadVideo()" id="loadBtn">🎬 Загрузить видео</button>
-                </div>
-                <div id="videoContainer">
-                    <div class="video-placeholder">
-                        <div>
-                            <h3>👆 Вставьте ссылку на видео VK выше</h3>
-                            <p style="margin-top: 10px; color: #999;">Видео будет синхронизировано для всех участников</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="chat-section">
-                <div class="chat-header">💬 Чат</div>
-                <div class="online-users" id="onlineUsers">👥 Подключение...</div>
-                <div id="messages"></div>
-                <div class="chat-input-container">
-                    <input type="text" id="messageInput" placeholder="Написать сообщение..." onkeypress="if(event.key==='Enter') sendMessage()">
-                    <button id="sendBtn" onclick="sendMessage()">▶</button>
-                </div>
-            </div>
+        
+        <div class="controls">
+            <input type="text" id="nameInput" placeholder="Твоё имя..." maxlength="15">
+            <input type="text" id="videoUrl" placeholder="Ссылка на видео ВК или vkvideo.ru">
+            <button onclick="changeVideo()">🎬 Загрузить</button>
         </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <div class="chat-side">
+        <div class="online-status" id="onlineUsers">👥 Подключение...</div>
+        <div id="messages"></div>
+        <div class="chat-input">
+            <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+            <button onclick="sendMsg()">➤</button>
+        </div>
+    </div>
+</main>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<div id="toast"></div>
 
-    <script>
-        // Firebase конфигурация (БЕСПЛАТНАЯ)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBHCTl6nNAcdNkq2CCg-kQWHiLwLHkgpTw",
-            authDomain: "watch-together-vk.firebaseapp.com",
-            databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "watch-together-vk",
-            storageBucket: "watch-together-vk.firebasestorage.app",
-            messagingSenderId: "1016716536672",
-            appId: "1:1016716536672:web:267eb8cff43be82e308c05"
-        };
+<script>
+    // --- НАСТРОЙКИ FIREBASE ---
+    const firebaseConfig = {
+        databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app/"
+    };
 
-        // Инициализация Firebase (используем публичный демо-проект)
-        // ДЛЯ ПРОДАКШЕНА СОЗДАЙТЕ СВОЙ ПРОЕКТ!
-        const app = firebase.initializeApp({
-            databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app"
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // --- ЛОГИКА КОМНАТЫ ---
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomId = urlParams.get('r') || Math.random().toString(36).substring(2, 7).toUpperCase();
+    if (!urlParams.get('r')) window.history.replaceState({}, '', '?r=' + roomId);
+    
+    document.getElementById('roomDisplay').textContent = 'ID Комнаты: ' + roomId;
+
+    let myId = localStorage.getItem('myId') || 'u' + Date.now();
+    localStorage.setItem('myId', myId);
+
+    let myName = localStorage.getItem('myName') || '';
+    document.getElementById('nameInput').value = myName;
+
+    const roomRef = db.ref('rooms/' + roomId);
+    const videoRef = roomRef.child('video');
+    const msgRef = roomRef.child('messages');
+    const usersRef = roomRef.child('users');
+
+    // --- ФУНКЦИИ ---
+
+    // Обновление имени и статуса
+    function updatePresence() {
+        myName = document.getElementById('nameInput').value.trim() || 'Аноним';
+        localStorage.setItem('myName', myName);
+        usersRef.child(myId).set({
+            name: myName,
+            lastSeen: firebase.database.ServerValue.TIMESTAMP
         });
-        const database = firebase.database();
+    }
 
-        // Получение ID комнаты из URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let roomId = urlParams.get('room') || generateRoomId();
+    document.getElementById('nameInput').addEventListener('blur', updatePresence);
+    usersRef.child(myId).onDisconnect().remove();
+
+    // Список онлайн
+    usersRef.on('value', (snap) => {
+        const users = snap.val() || {};
+        const names = Object.values(users).map(u => `<b>${escape(u.name)}</b>`).join(', ');
+        document.getElementById('onlineUsers').innerHTML = `👥 Онлайн: ${names}`;
+    });
+
+    // Изменение видео
+    function changeVideo() {
+        if (!myName) return alert("Сначала введи имя!");
+        const url = document.getElementById('videoUrl').value;
+        const match = url.match(/video(-?\d+_\d+)/);
         
-        function generateRoomId() {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        if (match) {
+            const videoId = match[1];
+            const [oid, vid] = videoId.split('_');
+            const embed = `https://vk.com/video_ext.php?oid=${oid}&id=${vid}&hd=2&autoplay=1`;
+            videoRef.set({ url: embed, by: myName });
+            document.getElementById('videoUrl').value = '';
+        } else {
+            alert("Неверная ссылка! Нужно что-то вроде: vk.com/video-123_456");
         }
+    }
 
-        // Обновление URL
-        if (!urlParams.get('room')) {
-            const newUrl = new URL(window.location);
-            newUrl.searchParams.set('room', roomId);
-            window.history.replaceState({}, '', newUrl);
+    // Слушатель видео
+    videoRef.on('value', (snap) => {
+        const data = snap.val();
+        if (data) {
+            document.getElementById('videoWrapper').innerHTML = `<iframe src="${data.url}" allow="autoplay; fullscreen"></iframe>`;
+            showToast("🎬 Видео обновлено пользователем " + data.by);
         }
+    });
 
-        document.getElementById('roomId').textContent = roomId;
-        document.getElementById('shareLink').value = window.location.href;
-
-        // Генерация ID пользователя
-        let userId = localStorage.getItem('userId');
-        if (!userId) {
-            userId = 'user_' + Math.random().toString(36).substring(2, 11);
-            localStorage.setItem('userId', userId);
-        }
-
-        // Имя пользователя
-        let userName = localStorage.getItem('userName') || '';
-        document.getElementById('nameInput').value = userName;
-        document.getElementById('userName').textContent = userName || 'Гость';
-
-        // Ссылки на Firebase
-        const roomRef = database.ref(`rooms/${roomId}`);
-        const messagesRef = roomRef.child('messages');
-        const videoRef = roomRef.child('video');
-        const usersRef = roomRef.child('users');
-        const userRef = usersRef.child(userId);
-
-        // Обновление имени пользователя
-        document.getElementById('nameInput').addEventListener('change', function() {
-            userName = this.value.trim() || 'Гость';
-            localStorage.setItem('userName', userName);
-            document.getElementById('userName').textContent = userName;
-            userRef.update({ name: userName });
+    // Чат
+    function sendMsg() {
+        const txt = document.getElementById('msgInput').value.trim();
+        if (!txt || !myName) return;
+        msgRef.push({
+            uid: myId,
+            user: myName,
+            text: txt,
+            time: Date.now()
         });
+        document.getElementById('msgInput').value = '';
+    }
 
-        // Присутствие пользователя
-        userRef.set({
-            name: userName || 'Гость',
-            online: true,
-            lastSeen: firebase.database.ServerValue.TIMESTAMP
-        });
+    msgRef.limitToLast(50).on('child_added', (snap) => {
+        const m = snap.val();
+        const isOwn = m.uid === myId;
+        const div = document.createElement('div');
+        div.className = `msg ${isOwn ? 'own' : 'other'}`;
+        const time = new Date(m.time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        
+        div.innerHTML = `
+            <div class="msg-info">${isOwn ? '' : escape(m.user)}</div>
+            <div class="msg-text">${escape(m.text)}</div>
+            <div class="msg-time">${time}</div>
+        `;
+        const container = document.getElementById('messages');
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    });
 
-        userRef.onDisconnect().update({
-            online: false,
-            lastSeen: firebase.database.ServerValue.TIMESTAMP
-        });
+    // Вспомогательные функции
+    function escape(s) {
+        let t = document.createElement('div');
+        t.textContent = s;
+        return t.innerHTML;
+    }
 
-        // Отслеживание онлайн пользователей
-        usersRef.on('value', (snapshot) => {
-            const users = snapshot.val() || {};
-            const onlineCount = Object.values(users).filter(u => u.online).length;
-            const userNames = Object.values(users)
-                .filter(u => u.online)
-                .map(u => u.name)
-                .join(', ');
-            
-            document.getElementById('onlineUsers').innerHTML = 
-                `👥 Онлайн: ${onlineCount} — ${userNames}`;
-        });
+    function showToast(text) {
+        const t = document.getElementById('toast');
+        t.textContent = text;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
 
-        // Загрузка видео
-        function loadVideo() {
-            const url = document.getElementById('videoUrl').value.trim();
-            if (!url) {
-                showToast('Вставьте ссылку на видео!', 'error');
-                return;
-            }
+    // Инициализация
+    if (myName) updatePresence();
+    setInterval(() => { if(myName) updatePresence(); }, 20000); // Heartbeat
+</script>
 
-            if (!userName) {
-                showToast('Введите ваше имя!', 'error');
-                return;
-            }
-
-            let videoId = '';
-            
-            // Извлечение ID из разных форматов
-            const patterns = [
-                /video(-?\d+_\d+)/,
-                /z=video(-?\d+_\d+)/,
-                /video\.php\?.*oid=(-?\d+).*id=(\d+)/
-            ];
-
-            for (let pattern of patterns) {
-                const match = url.match(pattern);
-                if (match) {
-                    if (match[2]) {
-                        videoId = match[1] + '_' + match[2];
-                    } else {
-                        videoId = match[1];
-                    }
-                    break;
-                }
-            }
-
-            if (!videoId) {
-                showToast('Неверная ссылка. Пример: https://vk.com/video-123456_789012345', 'error');
-                return;
-            }
-
-            const parts = videoId.split('_');
-            const embedUrl = `https://vk.com/video_ext.php?oid=${parts[0]}&id=${parts[1]}&hd=2&autoplay=1`;
-            
-            videoRef.set({
-                url: embedUrl,
-                videoId: videoId,
-                loadedBy: userName,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-
-            showToast('✅ Видео загружено!');
-        }
-
-        // Отслеживание изменений видео
-        videoRef.on('value', (snapshot) => {
-            const videoData = snapshot.val();
-            if (videoData && videoData.url) {
-                document.getElementById('videoContainer').innerHTML = 
-                    `<iframe src="${videoData.url}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock;" allowfullscreen></iframe>`;
-            }
-        });
-
-        // Отправка сообщения
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            if (!text) return;
-
-            if (!userName) {
-                showToast('Введите ваше имя!', 'error');
-                return;
-            }
-
-            messagesRef.push({
-                author: userName,
-                userId: userId,
-                text: text,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-
-            input.value = '';
-        }
-
-        // Отображение сообщений
-        messagesRef.limitToLast(50).on('child_added', (snapshot) => {
-            const msg = snapshot.val();
-            displayMessage(msg.author, msg.text, msg.timestamp, msg.userId === userId);
-        });
-
-        function displayMessage(author, text, timestamp, isOwn) {
-            const messagesDiv = document.getElementById('messages');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${isOwn ? 'own' : 'other'}`;
-            
-            const time = timestamp ? new Date(timestamp).toLocaleTimeString('ru-RU', {
-                hour: '2-digit',
-                minute: '2-digit'
-            }) : '';
-
-            msgDiv.innerHTML = `
-                ${!isOwn ? `<div class="message-author">${escapeHtml(author)}</div>` : ''}
-                <div class="message-text">${escapeHtml(text)}</div>
-                <div class="message-time">${time}</div>
-            `;
-            
-            messagesDiv.appendChild(msgDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Копирование ссылки
-        function copyShareLink() {
-            const input = document.getElementById('shareLink');
-            input.select();
-            input.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-            showToast('✅ Ссылка скопирована!');
-        }
-
-        // Уведомления
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.background = type === 'error' ? '#f44336' : '#4caf50';
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        // Приветственное сообщение
-        setTimeout(() => {
-            if (!userName) {
-                showToast('👋 Введите ваше имя для начала!', 'info');
-            }
-        }, 1000);
-    </script>
 </body>
 </html>
