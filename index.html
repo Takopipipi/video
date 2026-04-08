@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cinema Cloud Sync ☁️</title>
+    <title>Local Sync Cinema 🍿</title>
+    <!-- Плеер и Firebase -->
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <style>
         :root { --bg: #050505; --panel: #111; --accent: #7c4dff; --text: #eee; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,18 +19,13 @@
         .card { background: var(--panel); padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; text-align: center; border: 1px solid #222; }
         input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 10px; width: 100%; margin-bottom: 10px; outline: none; }
         button { background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ИНТЕРФЕЙС */
         #room-ui { display: none; flex-direction: column; height: 100%; }
-        .admin-bar { background: var(--panel); padding: 10px; border-bottom: 1px solid #222; display: flex; gap: 10px; align-items: center; }
+        .top-bar { background: var(--panel); padding: 10px; border-bottom: 1px solid #222; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
         
-        /* Прогресс бар загрузки */
-        #uploadProgress { flex: 1; height: 8px; background: #222; border-radius: 4px; overflow: hidden; display: none; }
-        #progressBar { width: 0%; height: 100%; background: var(--accent); transition: 0.3s; }
-
         .main { display: flex; flex: 1; overflow: hidden; }
-        .video-side { flex: 3; background: #000; position: relative; }
+        .video-side { flex: 3; background: #000; display: flex; flex-direction: column; justify-content: center; }
         .chat-side { flex: 1; min-width: 320px; background: #080808; border-left: 1px solid #222; display: flex; flex-direction: column; }
         
         #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
@@ -41,9 +36,11 @@
         .chat-input { padding: 10px; background: var(--panel); display: flex; gap: 5px; }
         .chat-input input { margin: 0; border-radius: 20px; }
 
+        .btn-sm { width: auto; padding: 8px 15px; font-size: 12px; }
+
         @media (max-width: 768px) {
             .main { flex-direction: column; overflow-y: auto; }
-            .chat-side { flex: none; height: 400px; width: 100%; }
+            .chat-side { flex: none; height: 350px; width: 100%; }
             .video-side { aspect-ratio: 16/9; flex: none; }
         }
     </style>
@@ -52,8 +49,8 @@
 
     <div id="lobby">
         <div class="card">
-            <h1 style="color:var(--accent); margin-bottom:20px">Cinema Cloud 🍿</h1>
-            <input type="text" id="userName" placeholder="Ваше имя">
+            <h1 style="color:var(--accent); margin-bottom:20px">Cinema Sync 🍿</h1>
+            <input type="text" id="userName" placeholder="Твоё имя">
             <button onclick="enterRoom('create')">Создать комнату</button>
             <div style="margin:10px; font-size:12px; color:#444">ИЛИ</div>
             <input type="text" id="joinId" placeholder="ID комнаты">
@@ -62,21 +59,25 @@
     </div>
 
     <div id="room-ui">
-        <div class="admin-bar" id="adminTools" style="display:none">
-            <input type="file" id="fileInp" accept="video/*" style="display:none" onchange="uploadVideo(this.files[0])">
-            <button onclick="document.getElementById('fileInp').click()" id="upBtn" style="width:auto">📁 Загрузить фильм</button>
-            <div id="uploadProgress"><div id="progressBar"></div></div>
-            <span id="roomCode" style="font-size:12px; color:#666"></span>
+        <div class="top-bar">
+            <div>
+                <input type="file" id="fileInp" accept="video/*" style="display:none" onchange="loadLocalFile(this.files[0])">
+                <button onclick="document.getElementById('fileInp').click()" class="btn-sm">📁 Выбрать файл видео</button>
+            </div>
+            <div id="statusLabel" style="font-size:12px; color:#666">ID: ---</div>
         </div>
 
         <div class="main">
             <div class="video-side">
                 <video id="player" playsinline controls></video>
+                <div id="fileHint" style="position:absolute; width:100%; text-align:center; color:#333; pointer-events:none;">
+                    Оба участника должны выбрать один и тот же файл
+                </div>
             </div>
             <div class="chat-side">
                 <div id="messages"></div>
                 <div class="chat-input">
-                    <input type="text" id="msgInp" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+                    <input type="text" id="msgInp" placeholder="Чат..." onkeypress="if(event.key==='Enter') sendMsg()">
                     <button onclick="sendMsg()" style="width:auto; padding:0 15px">➤</button>
                 </div>
             </div>
@@ -84,25 +85,19 @@
     </div>
 
 <script>
-    // --- КОНФИГУРАЦИЯ (Замени на свою!) ---
-    const firebaseConfig = {
-        databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app/",
-        storageBucket: "watch-together-vk.appspot.com" // Это имя твоего проекта + .appspot.com
-    };
-
+    // --- ТВОЙ FIREBASE ---
+    const firebaseConfig = { databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const storage = firebase.storage();
 
     let myId = localStorage.getItem('cinema_uid') || 'u' + Math.random().toString(36).substring(2, 7);
     localStorage.setItem('cinema_uid', myId);
     
     let currentRoom = null;
     let isMaster = false;
-    let player = new Plyr('#player');
+    let player = new Plyr('#player', { title: 'Local Video', invertTime: false });
     let blockSync = false;
 
-    // Вход в комнату
     function enterRoom(type) {
         const name = document.getElementById('userName').value.trim();
         if (!name) return alert("Введите имя!");
@@ -115,9 +110,7 @@
             if (type === 'create' || s.exists()) {
                 if (type === 'create') db.ref('rooms/' + rid + '/meta').set({ owner: myId });
                 startRoom(rid);
-            } else {
-                alert("Комната не найдена");
-            }
+            } else { alert("Комната не найдена"); }
         });
     }
 
@@ -125,36 +118,32 @@
         currentRoom = db.ref('rooms/' + rid);
         document.getElementById('lobby').style.display = 'none';
         document.getElementById('room-ui').style.display = 'flex';
-        document.getElementById('roomCode').textContent = "ID: " + rid;
+        document.getElementById('statusLabel').textContent = "ID: " + rid;
 
         currentRoom.child('meta/owner').once('value', s => {
             isMaster = (s.val() === myId);
-            if (isMaster) document.getElementById('adminTools').style.display = 'flex';
         });
 
-        // Синхронизация видео
+        // Слушаем команды от Мастера
         currentRoom.child('state').on('value', s => {
             const data = s.val();
-            if (!data || !data.url) return;
+            if (!data || isMaster || blockSync) return;
 
-            if (player.source !== data.url) {
-                player.source = { type: 'video', sources: [{ src: data.url, type: 'video/mp4' }] };
-            }
-
-            if (!isMaster) {
-                blockSync = true;
-                if (data.paused) player.pause(); else player.play();
-                if (Math.abs(player.currentTime - data.time) > 2) player.currentTime = data.time;
-                setTimeout(() => { blockSync = false; }, 500);
-            }
+            if (data.paused) player.pause(); else player.play();
+            if (Math.abs(player.currentTime - data.time) > 2) player.currentTime = data.time;
         });
 
-        // Мастер вещает
-        if (isMaster) {
-            const sync = () => { if(!blockSync) currentRoom.child('state').update({ time: player.currentTime, paused: player.paused }); };
-            player.on('play', sync); player.on('pause', sync); player.on('seeking', sync);
-            setInterval(() => { if(!player.paused) sync(); }, 3000);
-        }
+        // Мастер отправляет команды
+        const sync = () => {
+            if (isMaster && !blockSync) {
+                currentRoom.child('state').update({ time: player.currentTime, paused: player.paused });
+            }
+        };
+
+        player.on('play', sync);
+        player.on('pause', sync);
+        player.on('seeking', sync);
+        setInterval(() => { if(isMaster && !player.paused) sync(); }, 3000);
 
         // Чат
         currentRoom.child('messages').limitToLast(50).on('child_added', s => {
@@ -162,49 +151,30 @@
             const div = document.createElement('div');
             div.className = `m ${d.u === myId ? 'own' : 'other'}`;
             div.innerHTML = `<span style="font-size:10px;opacity:0.5;display:block">${d.n}</span>${d.t}`;
-            document.getElementById('messages').appendChild(div);
-            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+            const box = document.getElementById('messages');
+            box.appendChild(div); box.scrollTop = box.scrollHeight;
         });
     }
 
-    // Загрузка файла
-    function uploadVideo(file) {
+    // Загрузка локального файла (без отправки на сервер)
+    function loadLocalFile(file) {
         if (!file) return;
-        const upBtn = document.getElementById('upBtn');
-        const progressDiv = document.getElementById('uploadProgress');
-        const progressBar = document.getElementById('progressBar');
-
-        upBtn.disabled = true;
-        progressDiv.style.display = 'block';
-
-        const storageRef = storage.ref('videos/' + rid + '_' + file.name);
-        const uploadTask = storageRef.put(file);
-
-        uploadTask.on('state_changed', 
-            s => {
-                let p = (s.bytesTransferred / s.totalBytes) * 100;
-                progressBar.style.width = p + '%';
-            }, 
-            e => alert(e.message),
-            () => {
-                uploadTask.snapshot.ref.getDownloadURL().then(url => {
-                    currentRoom.child('state').set({ url: url, time: 0, paused: true });
-                    upBtn.disabled = false;
-                    progressDiv.style.display = 'none';
-                    alert("Фильм загружен и готов к просмотру!");
-                });
-            }
-        );
+        const objectURL = URL.createObjectURL(file);
+        player.source = { type: 'video', sources: [{ src: objectURL }] };
+        document.getElementById('fileHint').style.display = 'none';
+        
+        if (isMaster) {
+            currentRoom.child('messages').push({ n: 'СИСТЕМА', t: '🔥 Админ выбрал файл и готов к просмотру!', u: 'system' });
+        }
     }
 
     function sendMsg() {
         const t = document.getElementById('msgInp').value.trim();
         const n = localStorage.getItem('cinema_name');
-        if (t) currentRoom.child('messages').push({ n: n, t: t, u: myId });
+        if (t && currentRoom) currentRoom.child('messages').push({ n: n, t: t, u: myId });
         document.getElementById('msgInp').value = '';
     }
 
-    // Авто-вход по ссылке
     const ridParam = new URLSearchParams(window.location.search).get('r');
     if (ridParam) { document.getElementById('joinId').value = ridParam; }
 </script>
