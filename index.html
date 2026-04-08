@@ -3,20 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SyncCinema Mobile</title>
+    <title>Sync Cinema</title>
+    <!-- Подключаем Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         :root {
             --bg: #000000;
-            --panel: #1a1a1a;
-            --accent: #7c4dff;
+            --panel: #161616;
+            --accent: #6e41ff;
             --text: #ffffff;
+            --input-bg: #222222;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, system-ui, sans-serif;
             background: var(--bg);
             color: var(--text);
             height: 100vh;
@@ -25,62 +28,68 @@
             overflow: hidden;
         }
 
-        /* ПЛЕЕР (ВСЕГДА СВЕРХУ) */
-        .video-section {
+        /* Плеер сверху */
+        .video-box {
             width: 100%;
             background: #000;
             aspect-ratio: 16 / 9;
             position: relative;
-        }
-        #player_box { width: 100%; height: 100%; }
-        iframe { width: 100%; height: 100%; border: none; }
-
-        /* УПРАВЛЕНИЕ (КОМПАКТНОЕ) */
-        .controls {
-            background: var(--panel);
-            padding: 8px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
             border-bottom: 1px solid #333;
         }
+        #v_ifr { width: 100%; height: 100%; border: none; }
+
+        /* Панель управления (под видео) */
+        .top-bar {
+            background: var(--panel);
+            padding: 6px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
         input {
-            background: #333;
+            background: var(--input-bg);
             border: 1px solid #444;
             color: #fff;
-            padding: 6px 10px;
+            padding: 6px 8px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             outline: none;
         }
-        .url-input { flex: 1; min-width: 150px; }
-        .name-input { width: 80px; }
         
+        #nameInp { width: 60px; }
+        #urlInp { flex: 1; }
+
         button {
             background: var(--accent);
             color: #fff;
             border: none;
-            padding: 6px 12px;
+            padding: 6px 10px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             cursor: pointer;
         }
 
-        /* ЧАТ (ЗАНИМАЕТ ОСТАТОК ЭКРАНА) */
-        .chat-section {
+        .sync-btn { background: #444; }
+
+        /* Чат */
+        .chat-area {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: #0a0a0a;
+            background: #080808;
             overflow: hidden;
         }
-        #online-label {
-            font-size: 10px;
-            color: #888;
-            padding: 5px 10px;
+
+        #online-status {
+            font-size: 9px;
+            color: #777;
+            padding: 4px 10px;
             background: #111;
         }
+
         #messages {
             flex: 1;
             overflow-y: auto;
@@ -89,159 +98,175 @@
             flex-direction: column;
             gap: 6px;
         }
+
         .m {
             max-width: 85%;
             padding: 6px 10px;
             border-radius: 10px;
             font-size: 13px;
-            line-height: 1.4;
+            line-height: 1.3;
         }
         .m.own { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 2px; }
         .m.other { align-self: flex-start; background: #222; border-bottom-left-radius: 2px; }
-        .m-n { font-size: 10px; opacity: 0.6; display: block; margin-bottom: 2px; }
+        .m-n { font-size: 10px; opacity: 0.5; display: block; margin-bottom: 2px; font-weight: bold; }
 
-        .chat-input-row {
+        .chat-input {
             padding: 8px;
             display: flex;
             gap: 5px;
             background: var(--panel);
+            border-top: 1px solid #333;
         }
-        .chat-input-row input { flex: 1; }
+        .chat-input input { flex: 1; font-size: 14px; } /* 14px чтобы не зумило на iPhone */
 
-        /* ИНСТРУКЦИЯ ДЛЯ УКРАИНЫ */
-        .ua-hint {
+        .ua-text {
             position: absolute;
-            bottom: 5px;
+            bottom: 2px;
             width: 100%;
             text-align: center;
-            font-size: 9px;
-            color: #ff4444;
+            font-size: 8px;
+            color: #444;
             pointer-events: none;
         }
 
-        /* ДЛЯ ПК */
+        /* Для компьютеров */
         @media (min-width: 768px) {
             body { flex-direction: row; }
-            .video-section { flex: 3; aspect-ratio: auto; }
-            .chat-section { flex: 1; border-left: 1px solid #333; }
+            .video-box { flex: 3; aspect-ratio: auto; border-bottom: none; }
+            .chat-area { flex: 1; border-left: 1px solid #333; }
+            .top-bar { flex-wrap: wrap; }
         }
     </style>
 </head>
 <body>
 
-    <div class="video-section">
-        <div id="player_box">
-            <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#444; font-size:12px;">
-                Ожидание видео...
-            </div>
+    <div class="video-box" id="player_container">
+        <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#333; font-size:12px;">
+            Вставь ссылку ВК и нажми OK
         </div>
-        <div class="ua-hint">Если экран черный (UA) - включите VPN/WARP</div>
+        <div class="ua-text">Если видео не грузится (Украина) - включи VPN или WARP</div>
     </div>
 
-    <div class="chat-section">
-        <div class="controls">
-            <input type="text" id="nameInp" class="name-input" placeholder="Имя">
-            <input type="text" id="urlInp" class="url-input" placeholder="Ссылка vk.com/video...">
+    <div class="chat-area">
+        <div class="top-bar">
+            <input type="text" id="nameInp" placeholder="Имя">
+            <input type="text" id="urlInp" placeholder="Ссылка vk.com/video...">
             <button onclick="setVideo()">OK</button>
-            <button onclick="syncPlayer()" style="background:#444">Синхрон</button>
+            <button class="sync-btn" onclick="syncVideo()">СИНХРОН</button>
         </div>
 
-        <div id="online-label">Онлайн: ...</div>
-        
+        <div id="online-status">Подключение...</div>
         <div id="messages"></div>
 
-        <div class="chat-input-row">
-            <input type="text" id="msgInp" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+        <div class="chat-input">
+            <input type="text" id="msgInp" placeholder="Твоё сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
             <button onclick="sendMsg()">➤</button>
         </div>
     </div>
 
 <script>
-    // 1. ТВОЙ ФАЙРБЕЙС (ВСТАВЬ ССЫЛКУ)
+    // Настройки твоей базы данных
     const firebaseConfig = {
-        databaseURL: "ВСТАВЬ_СЮДА_СВОЮ_ССЫЛКУ"
+        databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app/"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // 2. КОМНАТА
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('r') || "ROOM1";
-    if (!urlParams.get('r')) window.history.replaceState({}, '', '?r=' + roomId);
-
-    const roomRef = db.ref('rooms/' + roomId);
+    // Переменные
     let myId = 'u' + Math.random().toString(36).substring(2, 6);
-    let myName = localStorage.getItem('cName') || '';
-    document.getElementById('nameInp').value = myName;
+    let myName = localStorage.getItem('cName') || 'Гость';
+    let roomId = new URLSearchParams(window.location.search).get('r') || "CINEMA";
+    let roomRef = null;
 
-    // 3. ВИДЕО
+    // Запуск Firebase
+    try {
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        roomRef = db.ref('rooms/' + roomId);
+        
+        // Устанавливаем ID комнаты в ссылке
+        if (!window.location.search.includes('r=')) {
+            window.history.replaceState({}, '', '?r=' + roomId);
+        }
+
+        document.getElementById('nameInp').value = myName === 'Гость' ? '' : myName;
+
+        // Начинаем слушать данные
+        initListeners();
+    } catch (e) {
+        console.error("Firebase Error:", e);
+    }
+
+    function initListeners() {
+        // Слушаем изменение видео
+        roomRef.child('video').on('value', s => {
+            const data = s.val();
+            const container = document.getElementById('player_container');
+            if (data && data.url) {
+                if (!container.innerHTML.includes(data.url)) {
+                    container.innerHTML = `<iframe id="v_ifr" src="${data.url}" allow="autoplay; fullscreen"></iframe>`;
+                }
+            }
+        });
+
+        // Слушаем чат
+        roomRef.child('messages').limitToLast(30).on('child_added', s => {
+            const d = s.val();
+            const div = document.createElement('div');
+            div.className = `m ${d.u === myId ? 'own' : 'other'}`;
+            div.innerHTML = `<span class="m-n">${esc(d.n)}</span>${esc(d.t)}`;
+            const box = document.getElementById('messages');
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        });
+
+        // Онлайн
+        setInterval(updatePresence, 10000);
+        roomRef.child('users').on('value', s => {
+            const users = Object.values(s.val() || {}).map(u => u.name).join(', ');
+            document.getElementById('online-status').textContent = 'В комнате: ' + users;
+        });
+        updatePresence();
+    }
+
     function setVideo() {
         const url = document.getElementById('urlInp').value;
         const match = url.match(/video(-?\d+_\d+)/);
-        if (match) {
+        if (match && roomRef) {
             const vid = match[1].split('_');
-            const embed = `https://vk.com/video_ext.php?oid=${vid[0]}&id=${vid[1]}&hd=2&autoplay=1&js_api=1`;
-            roomRef.child('video').set({ url: embed, time: 0, state: 'play' });
+            const embed = `https://vk.com/video_ext.php?oid=${vid[0]}&id=${vid[1]}&hd=2&autoplay=1`;
+            roomRef.child('video').set({ url: embed });
             document.getElementById('urlInp').value = '';
         }
     }
 
-    roomRef.child('video').on('value', s => {
-        const data = s.val();
-        if (data) {
-            const box = document.getElementById('player_box');
-            // Обновляем плеер только если ссылка изменилась
-            if (!box.innerHTML.includes(data.url)) {
-                box.innerHTML = `<iframe id="v_ifr" src="${data.url}" allow="autoplay; fullscreen"></iframe>`;
-            }
+    function syncVideo() {
+        const ifr = document.getElementById('v_ifr');
+        if (ifr) {
+            const oldSrc = ifr.src;
+            ifr.src = ''; 
+            ifr.src = oldSrc; // Просто перезагружаем плеер для выравнивания
         }
-    });
-
-    // Ручной синхрон (если авто не срабатывает)
-    function syncPlayer() {
-        roomRef.child('video').once('value', s => {
-            const data = s.val();
-            const ifr = document.getElementById('v_ifr');
-            if (ifr && data) {
-                // Перезагружаем iframe с нужной позиции (ВК позволяет вешать t=123 в URL)
-                const baseUrl = data.url.split('&t=')[0];
-                ifr.src = baseUrl + "&t=" + Math.floor(data.time || 0);
-            }
-        });
     }
 
-    // 4. ЧАТ
     function sendMsg() {
         const t = document.getElementById('msgInp').value.trim();
         myName = document.getElementById('nameInp').value.trim() || 'Гость';
         localStorage.setItem('cName', myName);
-        if (!t) return;
+        if (!t || !roomRef) return;
         roomRef.child('messages').push({ n: myName, t: t, u: myId });
         document.getElementById('msgInp').value = '';
     }
 
-    roomRef.child('messages').limitToLast(30).on('child_added', s => {
-        const d = s.val();
-        const div = document.createElement('div');
-        div.className = `m ${d.u === myId ? 'own' : 'other'}`;
-        div.innerHTML = `<span class="m-n">${d.n}</span>${d.t}`;
-        const box = document.getElementById('messages');
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
-    });
-
-    // 5. ОНЛАЙН СТАТУС
     function updatePresence() {
-        const name = document.getElementById('nameInp').value || 'Гость';
+        if (!roomRef) return;
+        const name = document.getElementById('nameInp').value || myName;
         roomRef.child('users').child(myId).set({ name: name, last: Date.now() });
     }
-    setInterval(updatePresence, 10000);
-    roomRef.child('users').on('value', s => {
-        const users = Object.values(s.val() || {}).map(u => u.name).join(', ');
-        document.getElementById('online-label').textContent = 'В комнате: ' + users;
-    });
 
+    function esc(s) {
+        let t = document.createElement('div');
+        t.textContent = s;
+        return t.innerHTML;
+    }
 </script>
 </body>
 </html>
