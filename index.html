@@ -3,125 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cinema Sync Pro</title>
-    <!-- Firebase и VK API -->
+    <title>Master Cinema Sync</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://vk.com/js/api/videoplayer.js"></script>
     <style>
-        :root { --bg: #000; --panel: #111; --accent: #6e41ff; --text: #fff; }
+        :root { --bg: #000; --panel: #111; --accent: #7c4dff; --text: #eee; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Плеер */
+        /* Видео */
         .video-box { width: 100%; background: #000; aspect-ratio: 16/9; position: relative; border-bottom: 1px solid #222; }
         #player_container { width: 100%; height: 100%; }
-        iframe { width: 100%; height: 100%; border: none; }
+        iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
 
-        /* Управление */
-        .top-bar { background: var(--panel); padding: 5px; display: flex; gap: 5px; align-items: center; }
-        input { background: #222; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 4px; font-size: 12px; outline: none; }
-        #nameInp { width: 70px; }
+        /* Панель */
+        .top-bar { background: var(--panel); padding: 6px; display: flex; gap: 5px; align-items: center; border-bottom: 1px solid #333; }
+        input { background: #222; border: 1px solid #444; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px; outline: none; }
         #urlInp { flex: 1; }
-        button { background: var(--accent); color: #fff; border: none; padding: 8px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
-        .sync-btn { background: #333; }
+        #nameInp { width: 80px; }
+        button { background: var(--accent); color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        
+        .role-badge { font-size: 9px; padding: 2px 5px; border-radius: 3px; background: #333; color: #aaa; text-transform: uppercase; }
+        .role-master { background: #d32f2f; color: #fff; }
 
         /* Чат */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #050505; overflow: hidden; }
-        #online-status { font-size: 9px; color: #555; padding: 4px 10px; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #080808; overflow: hidden; }
+        #online-label { font-size: 10px; color: #666; padding: 5px 10px; border-bottom: 1px solid #111; }
         #messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
-        .m { max-width: 85%; padding: 6px 10px; border-radius: 10px; font-size: 13px; line-height: 1.3; }
+        .m { max-width: 85%; padding: 6px 10px; border-radius: 10px; font-size: 13px; line-height: 1.4; }
         .m.own { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 2px; }
         .m.other { align-self: flex-start; background: #222; border-bottom-left-radius: 2px; }
-        .m-n { font-size: 10px; opacity: 0.5; display: block; margin-bottom: 2px; }
+        .m-n { font-size: 10px; opacity: 0.5; display: block; }
 
-        .chat-input { padding: 8px; display: flex; gap: 5px; background: var(--panel); }
+        .chat-input { padding: 8px; display: flex; gap: 5px; background: var(--panel); border-top: 1px solid #222; }
         .chat-input input { flex: 1; font-size: 14px; }
+
+        @media (min-width: 768px) {
+            body { flex-direction: row; }
+            .video-box { flex: 3; aspect-ratio: auto; }
+            .chat-area { flex: 1; border-left: 1px solid #333; }
+        }
     </style>
 </head>
 <body>
 
     <div class="video-box">
         <div id="player_container">
-            <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#333; font-size:12px;">Ожидание видео...</div>
+            <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#444;">Вставьте ссылку на видео</div>
         </div>
     </div>
 
     <div class="chat-area">
         <div class="top-bar">
+            <span id="roleLabel" class="role-badge">Зритель</span>
             <input type="text" id="nameInp" placeholder="Имя">
             <input type="text" id="urlInp" placeholder="Ссылка VK...">
             <button onclick="setVideo()">OK</button>
-            <button class="sync-btn" onclick="requestSync()">МЫ ТУТ</button>
         </div>
-        <div id="online-status">Загрузка...</div>
+        <div id="online-label">Онлайн: ...</div>
         <div id="messages"></div>
         <div class="chat-input">
-            <input type="text" id="msgInp" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+            <input type="text" id="msgInp" placeholder="Текст..." onkeypress="if(event.key==='Enter') sendMsg()">
             <button onclick="sendMsg()">➤</button>
         </div>
     </div>
 
 <script>
+    // --- ТВОИ ДАННЫЕ ---
     const firebaseConfig = { databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    
+
     let myId = 'u' + Math.random().toString(36).substring(2, 6);
-    let myName = localStorage.getItem('cName') || 'Гость';
+    let myName = localStorage.getItem('cName') || '';
     let roomId = new URLSearchParams(window.location.search).get('r') || "CINEMA";
     let roomRef = db.ref('rooms/' + roomId);
+    
+    let isMaster = false;
     let player = null;
+    let lastUrl = "";
 
-    if (!window.location.search.includes('r=')) window.history.replaceState({}, '', '?r=' + roomId);
-    document.getElementById('nameInp').value = myName === 'Гость' ? '' : myName;
+    document.getElementById('nameInp').value = myName;
 
-    // 1. Слушаем изменения видео и времени
-    roomRef.child('video').on('value', s => {
+    // 1. ЛОГИКА ОПРЕДЕЛЕНИЯ МАСТЕРА
+    function checkMaster() {
+        roomRef.child('master').on('value', s => {
+            const masterId = s.val();
+            if (!masterId) {
+                // Если мастера нет, занимаем трон
+                roomRef.child('master').set(myId);
+                roomRef.child('master').onDisconnect().remove();
+            }
+            isMaster = (masterId === myId);
+            const label = document.getElementById('roleLabel');
+            label.textContent = isMaster ? "ГЛАВНЫЙ" : "ЗРИТЕЛЬ";
+            label.className = "role-badge " + (isMaster ? "role-master" : "");
+        });
+    }
+
+    // 2. СИНХРОНИЗАЦИЯ ПЛЕЕРА
+    roomRef.child('state').on('value', s => {
         const data = s.val();
         if (!data) return;
 
-        const container = document.getElementById('player_container');
-        // Если видео новое - создаем плеер
-        if (!container.innerHTML.includes(data.url.split('&')[0])) {
-            container.innerHTML = `<iframe id="vk_player" src="${data.url}&js_api=1" allow="autoplay; fullscreen"></iframe>`;
-            // Инициализируем API ВК через секунду после загрузки
+        // Если сменилась ссылка
+        if (data.url !== lastUrl) {
+            lastUrl = data.url;
+            const container = document.getElementById('player_container');
+            container.innerHTML = `<iframe id="vk_ifr" src="${data.url}&js_api=1" allow="autoplay; fullscreen"></iframe>`;
             setTimeout(() => {
-                player = VK.VideoPlayer(document.getElementById('vk_player'));
+                player = VK.VideoPlayer(document.getElementById('vk_ifr'));
             }, 2000);
-        } else if (player) {
-            // Если видео то же самое, просто мотаем время (БЕЗ РЕКЛАМЫ)
-            player.seek(data.time);
+        }
+
+        // Если мы зритель — слушаем Мастера
+        if (!isMaster && player) {
+            if (data.status === 'play') player.play();
+            if (data.status === 'pause') player.pause();
+            
+            player.getCurrentTime(myTime => {
+                if (Math.abs(myTime - data.time) > 3) {
+                    player.seek(data.time);
+                }
+            });
         }
     });
 
-    // 2. Функция "Синхрон" (МЫ ТУТ)
-    function requestSync() {
-        if (!player) return;
-        player.getCurrentTime(time => {
-            // Сохраняем текущее время в базу
-            roomRef.child('video').update({ time: time, lastUpdate: Date.now() });
-        });
-    }
+    // Если мы МАСТЕР — отправляем данные в базу
+    setInterval(() => {
+        if (isMaster && player) {
+            player.getCurrentTime(t => {
+                player.getState(state => {
+                    roomRef.child('state').update({
+                        time: t,
+                        status: state, // 'play' или 'pause'
+                        url: lastUrl
+                    });
+                });
+            });
+        }
+    }, 2000); // Каждые 2 секунды
 
     function setVideo() {
         const url = document.getElementById('urlInp').value;
         const match = url.match(/video(-?\d+_\d+)/);
         if (match) {
-            const vid = match[1].split('_');
-            const embed = `https://vk.com/video_ext.php?oid=${vid[0]}&id=${vid[1]}&hd=2&autoplay=1`;
-            roomRef.child('video').set({ url: embed, time: 0, lastUpdate: Date.now() });
+            const v = match[1].split('_');
+            const embed = `https://vk.com/video_ext.php?oid=${v[0]}&id=${v[1]}&hd=2&autoplay=1`;
+            roomRef.child('state').set({ url: embed, time: 0, status: 'play' });
             document.getElementById('urlInp').value = '';
         }
     }
 
-    // 3. Чат и онлайн (стандартно)
+    // 3. ЧАТ И ОНЛАЙН
     function sendMsg() {
         const t = document.getElementById('msgInp').value.trim();
         myName = document.getElementById('nameInp').value.trim() || 'Гость';
         localStorage.setItem('cName', myName);
-        if (!t) return;
-        roomRef.child('messages').push({ n: myName, t: t, u: myId });
+        if (t) roomRef.child('messages').push({ n: myName, t: t, u: myId });
         document.getElementById('msgInp').value = '';
     }
 
@@ -129,27 +169,23 @@
         const d = s.val();
         const div = document.createElement('div');
         div.className = `m ${d.u === myId ? 'own' : 'other'}`;
-        div.innerHTML = `<span class="m-n">${esc(d.n)}</span>${esc(d.t)}`;
+        div.innerHTML = `<span class="m-n">${d.n}</span>${d.t}`;
         const box = document.getElementById('messages');
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+        box.appendChild(div); box.scrollTop = box.scrollHeight;
     });
 
-    function updatePresence() {
-        const name = document.getElementById('nameInp').value || myName;
+    setInterval(() => {
+        const name = document.getElementById('nameInp').value || myName || 'Гость';
         roomRef.child('users').child(myId).set({ name: name, last: Date.now() });
-    }
-    setInterval(updatePresence, 10000);
+    }, 10000);
+
     roomRef.child('users').on('value', s => {
         const users = Object.values(s.val() || {}).map(u => u.name).join(', ');
-        document.getElementById('online-status').textContent = 'В комнате: ' + users;
+        document.getElementById('online-label').textContent = 'В комнате: ' + users;
     });
 
-    function esc(s) {
-        let t = document.createElement('div');
-        t.textContent = s;
-        return t.innerHTML;
-    }
+    checkMaster();
+    if (!window.location.search.includes('r=')) window.history.replaceState({}, '', '?r=' + roomId);
 </script>
 </body>
 </html>
