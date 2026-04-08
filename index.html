@@ -3,131 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Кино-Комната 🎥</title>
+    <title>SyncCinema Dark 🎥</title>
+    <!-- Firebase & VK API -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://vk.com/js/api/videoplayer.js"></script>
+    
     <style>
         :root {
-            --bg-color: #0f0f0f;
-            --card-bg: #1e1e1e;
-            --accent-color: #7c4dff;
-            --text-color: #e0e0e0;
-            --msg-own: #4a148c;
-            --msg-other: #333333;
+            --bg: #0a0a0b;
+            --panel: #161618;
+            --accent: #8b5cf6;
+            --text: #efeff1;
+            --dim: #71717a;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        /* Шапка */
+        /* HEADER */
         header {
-            background: var(--card-bg);
-            padding: 10px 20px;
+            height: 50px;
+            background: var(--panel);
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #333;
-            z-index: 10;
+            justify-content: space-between;
+            padding: 0 15px;
+            border-bottom: 1px solid #27272a;
         }
+        .logo { font-weight: 700; color: var(--accent); letter-spacing: 1px; }
 
-        .logo { color: var(--accent-color); font-weight: bold; font-size: 1.2rem; }
-        
-        .room-tag {
-            font-size: 0.8rem;
-            background: #333;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
+        /* MAIN */
+        main { display: flex; flex: 1; overflow: hidden; }
 
-        /* Основной контейнер */
-        main {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            flex-direction: row;
-        }
-
-        /* Секция видео */
-        .video-side {
+        .player-side {
             flex: 3;
             display: flex;
             flex-direction: column;
             padding: 15px;
-            gap: 10px;
-        }
-
-        #videoWrapper {
-            width: 100%;
-            aspect-ratio: 16 / 9;
+            gap: 15px;
             background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
-        iframe { width: 100%; height: 100%; border: none; }
+        .video-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        #vk_player { width: 100%; height: 100%; border: none; }
 
         .controls {
+            background: var(--panel);
+            padding: 15px;
+            border-radius: 12px;
             display: flex;
-            gap: 8px;
-            background: var(--card-bg);
-            padding: 10px;
-            border-radius: 8px;
+            gap: 10px;
+            align-items: center;
         }
 
-        input[type="text"] {
+        input {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
             flex: 1;
-            background: #2b2b2b;
-            border: 1px solid #444;
-            color: white;
-            padding: 10px;
-            border-radius: 6px;
             outline: none;
         }
-
-        input:focus { border-color: var(--accent-color); }
+        input:focus { border-color: var(--accent); }
 
         button {
-            background: var(--accent-color);
+            background: var(--accent);
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 6px;
+            border-radius: 8px;
+            font-weight: 600;
             cursor: pointer;
-            font-weight: bold;
             transition: 0.2s;
         }
+        button:hover { opacity: 0.8; }
 
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-
-        /* Секция чата */
+        /* CHAT */
         .chat-side {
             flex: 1;
-            background: var(--card-bg);
+            min-width: 320px;
+            background: var(--panel);
+            border-left: 1px solid #27272a;
             display: flex;
             flex-direction: column;
-            border-left: 1px solid #333;
-            min-width: 320px;
         }
 
-        .online-status {
-            padding: 10px 15px;
-            background: #252525;
-            font-size: 0.85rem;
-            border-bottom: 1px solid #333;
-            color: #aaa;
+        .chat-header {
+            padding: 12px;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #27272a;
+            color: var(--dim);
         }
-
-        .online-status b { color: var(--accent-color); }
 
         #messages {
             flex: 1;
@@ -135,91 +119,70 @@
             padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }
 
-        .msg {
-            max-width: 85%;
+        .m {
             padding: 8px 12px;
             border-radius: 12px;
-            font-size: 0.95rem;
-            position: relative;
+            max-width: 85%;
+            font-size: 0.9rem;
             line-height: 1.4;
         }
-
-        .msg.own { align-self: flex-end; background: var(--msg-own); border-bottom-right-radius: 2px; }
-        .msg.other { align-self: flex-start; background: var(--msg-other); border-bottom-left-radius: 2px; }
-
-        .msg-info { font-size: 0.7rem; opacity: 0.6; margin-bottom: 3px; font-weight: bold; }
-        .msg-time { font-size: 0.65rem; opacity: 0.4; text-align: right; margin-top: 3px; }
+        .m.own { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 2px; }
+        .m.other { align-self: flex-start; background: #27272a; border-bottom-left-radius: 2px; }
+        .m-name { font-size: 0.7rem; color: var(--dim); margin-bottom: 2px; display: block; }
 
         .chat-input {
             padding: 15px;
             display: flex;
             gap: 8px;
-            border-top: 1px solid #333;
+            border-top: 1px solid #27272a;
         }
 
-        /* Мобильная адаптация */
+        /* MOBILE */
         @media (max-width: 768px) {
             main { flex-direction: column; overflow-y: auto; }
-            .chat-side { flex: none; height: 500px; border-left: none; border-top: 1px solid #333; }
-            .video-side { flex: none; }
-            .controls { flex-wrap: wrap; }
-            .controls input#nameInput { width: 100%; }
+            .player-side { flex: none; height: 350px; padding: 5px; }
+            .chat-side { flex: 1; min-height: 400px; border-left: none; }
+            .controls { flex-direction: column; }
+            .controls input { width: 100%; }
         }
-
-        /* Уведомления */
-        #toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--accent-color);
-            padding: 10px 20px;
-            border-radius: 5px;
-            display: none;
-            animation: fadeIn 0.3s;
-            z-index: 100;
-        }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="logo">WATCH TOGETHER 🍿</div>
-    <div class="room-tag" id="roomDisplay">Комната: ...</div>
+    <div class="logo">RAVE WEB CLONE 🍿</div>
+    <div id="online-list" style="font-size: 11px; color: var(--dim);">Подключение...</div>
 </header>
 
 <main>
-    <div class="video-side">
-        <div id="videoWrapper">
-            <div style="display:flex; height:100%; align-items:center; justify-content:center; color:#666; text-align:center; padding:20px;">
-                Здесь будет видео. Вставьте ссылку ниже 👇
+    <div class="player-side">
+        <div class="video-container" id="player_box">
+            <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#3f3f46;">
+                Вставьте ссылку на видео ВК ниже
             </div>
         </div>
-        
         <div class="controls">
-            <input type="text" id="nameInput" placeholder="Твоё имя..." maxlength="15">
-            <input type="text" id="videoUrl" placeholder="Ссылка на видео ВК или vkvideo.ru">
-            <button onclick="changeVideo()">🎬 Загрузить</button>
+            <input type="text" id="nameInp" placeholder="Ваше имя" style="flex: 0 0 120px;">
+            <input type="text" id="urlInp" placeholder="Ссылка на видео (vk.com/video-XXX_YYY)">
+            <button onclick="setVideo()">Загрузить</button>
         </div>
     </div>
 
     <div class="chat-side">
-        <div class="online-status" id="onlineUsers">👥 Подключение...</div>
+        <div class="chat-header">СИНХРОННЫЙ ЧАТ</div>
         <div id="messages"></div>
         <div class="chat-input">
-            <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+            <input type="text" id="msgInp" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
             <button onclick="sendMsg()">➤</button>
         </div>
     </div>
 </main>
 
-<div id="toast"></div>
-
 <script>
-    // --- НАСТРОЙКИ FIREBASE ---
+    // 1. КОНФИГУРАЦИЯ (ВСТАВЬТЕ СВОИ ДАННЫЕ ИЗ FIREBASE)
     const firebaseConfig = {
         databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app/"
     };
@@ -227,120 +190,125 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- ЛОГИКА КОМНАТЫ ---
+    // 2. ПЕРЕМЕННЫЕ
     const urlParams = new URLSearchParams(window.location.search);
-    let roomId = urlParams.get('r') || Math.random().toString(36).substring(2, 7).toUpperCase();
+    const roomId = urlParams.get('r') || Math.random().toString(36).substring(2, 7).toUpperCase();
     if (!urlParams.get('r')) window.history.replaceState({}, '', '?r=' + roomId);
-    
-    document.getElementById('roomDisplay').textContent = 'ID Комнаты: ' + roomId;
-
-    let myId = localStorage.getItem('myId') || 'u' + Date.now();
-    localStorage.setItem('myId', myId);
-
-    let myName = localStorage.getItem('myName') || '';
-    document.getElementById('nameInput').value = myName;
 
     const roomRef = db.ref('rooms/' + roomId);
-    const videoRef = roomRef.child('video');
-    const msgRef = roomRef.child('messages');
-    const usersRef = roomRef.child('users');
+    let myId = 'u' + Math.random().toString(36).substring(2, 6);
+    let myName = localStorage.getItem('cinemaName') || '';
+    document.getElementById('nameInp').value = myName;
 
-    // --- ФУНКЦИИ ---
+    let player = null;
+    let isRemoteAction = false;
 
-    // Обновление имени и статуса
+    // 3. ЛОГИКА ОНЛАЙНА
     function updatePresence() {
-        myName = document.getElementById('nameInput').value.trim() || 'Аноним';
-        localStorage.setItem('myName', myName);
-        usersRef.child(myId).set({
-            name: myName,
-            lastSeen: firebase.database.ServerValue.TIMESTAMP
-        });
+        myName = document.getElementById('nameInp').value.trim() || 'Гость';
+        localStorage.setItem('cinemaName', myName);
+        roomRef.child('users').child(myId).set({ name: myName, last: Date.now() });
     }
-
-    document.getElementById('nameInput').addEventListener('blur', updatePresence);
-    usersRef.child(myId).onDisconnect().remove();
-
-    // Список онлайн
-    usersRef.on('value', (snap) => {
-        const users = snap.val() || {};
-        const names = Object.values(users).map(u => `<b>${escape(u.name)}</b>`).join(', ');
-        document.getElementById('onlineUsers').innerHTML = `👥 Онлайн: ${names}`;
+    roomRef.child('users').child(myId).onDisconnect().remove();
+    roomRef.child('users').on('value', s => {
+        const users = Object.values(s.val() || {}).map(u => u.name).join(', ');
+        document.getElementById('online-list').textContent = 'В комнате: ' + users;
     });
 
-    // Изменение видео
-    function changeVideo() {
-        if (!myName) return alert("Сначала введи имя!");
-        const url = document.getElementById('videoUrl').value;
+    // 4. УПРАВЛЕНИЕ ВИДЕО И СИНХРОНИЗАЦИЕЙ
+    function setVideo() {
+        const url = document.getElementById('urlInp').value;
         const match = url.match(/video(-?\d+_\d+)/);
-        
         if (match) {
-            const videoId = match[1];
-            const [oid, vid] = videoId.split('_');
-            const embed = `https://vk.com/video_ext.php?oid=${oid}&id=${vid}&hd=2&autoplay=1`;
-            videoRef.set({ url: embed, by: myName });
-            document.getElementById('videoUrl').value = '';
-        } else {
-            alert("Неверная ссылка! Нужно что-то вроде: vk.com/video-123_456");
+            const vid = match[1].split('_');
+            const embedUrl = `https://vk.com/video_ext.php?oid=${vid[0]}&id=${vid[1]}&api=1`; // api=1 важно!
+            roomRef.child('sync').set({
+                url: embedUrl,
+                state: 'play',
+                time: 0,
+                by: myId
+            });
+            document.getElementById('urlInp').value = '';
         }
     }
 
-    // Слушатель видео
-    videoRef.on('value', (snap) => {
+    roomRef.child('sync').on('value', snap => {
         const data = snap.val();
-        if (data) {
-            document.getElementById('videoWrapper').innerHTML = `<iframe src="${data.url}" allow="autoplay; fullscreen"></iframe>`;
-            showToast("🎬 Видео обновлено пользователем " + data.by);
+        if (!data) return;
+
+        // Если пришла новая ссылка - создаем плеер
+        const currentIframe = document.querySelector('#vk_player');
+        if (!currentIframe || currentIframe.src !== data.url) {
+            document.getElementById('player_box').innerHTML = `<iframe id="vk_player" src="${data.url}" allow="autoplay; fullscreen" frameborder="0"></iframe>`;
+            
+            // Инициализация API плеера
+            setTimeout(() => {
+                player = VK.VideoPlayer(document.getElementById('vk_player'));
+                
+                // Подписываемся на события плеера
+                player.subscribe('onPlay', () => handleLocalAction('play'));
+                player.subscribe('onPause', () => handleLocalAction('pause'));
+                player.subscribe('onSeek', (t) => handleLocalAction('seek', t));
+            }, 1000);
+        }
+
+        // Если действие пришло от другого пользователя - выполняем
+        if (data.by !== myId && player) {
+            isRemoteAction = true;
+            if (data.state === 'play') player.play();
+            if (data.state === 'pause') player.pause();
+            
+            // Если разница во времени большая - мотаем
+            player.getCurrentTime(t => {
+                if (Math.abs(t - data.time) > 2) player.seek(data.time);
+            });
+            
+            setTimeout(() => { isRemoteAction = false; }, 500);
         }
     });
 
-    // Чат
-    function sendMsg() {
-        const txt = document.getElementById('msgInput').value.trim();
-        if (!txt || !myName) return;
-        msgRef.push({
-            uid: myId,
-            user: myName,
-            text: txt,
-            time: Date.now()
-        });
-        document.getElementById('msgInput').value = '';
-    }
-
-    msgRef.limitToLast(50).on('child_added', (snap) => {
-        const m = snap.val();
-        const isOwn = m.uid === myId;
-        const div = document.createElement('div');
-        div.className = `msg ${isOwn ? 'own' : 'other'}`;
-        const time = new Date(m.time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    function handleLocalAction(action, time = null) {
+        if (isRemoteAction || !player) return;
         
-        div.innerHTML = `
-            <div class="msg-info">${isOwn ? '' : escape(m.user)}</div>
-            <div class="msg-text">${escape(m.text)}</div>
-            <div class="msg-time">${time}</div>
-        `;
-        const container = document.getElementById('messages');
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+        player.getCurrentTime(t => {
+            roomRef.child('sync').update({
+                state: action === 'seek' ? 'play' : action,
+                time: time !== null ? time : t,
+                by: myId
+            });
+        });
+    }
+
+    // Регулярно обновляем время в базе (если мы инициатор), чтобы партнер мог синхрониться
+    setInterval(() => {
+        if (player && !isRemoteAction) {
+            player.getCurrentTime(t => {
+                roomRef.child('sync').child('time').set(t);
+            });
+        }
+    }, 5000);
+
+    // 5. ЧАТ
+    function sendMsg() {
+        const t = document.getElementById('msgInp').value.trim();
+        if (!t || !myName) return;
+        roomRef.child('messages').push({ n: myName, t: t, u: myId });
+        document.getElementById('msgInp').value = '';
+    }
+
+    roomRef.child('messages').limitToLast(40).on('child_added', s => {
+        const d = s.val();
+        const div = document.createElement('div');
+        div.className = `m ${d.u === myId ? 'own' : 'other'}`;
+        div.innerHTML = `<span class="m-name">${d.n}</span>${d.t}`;
+        const box = document.getElementById('messages');
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
     });
-
-    // Вспомогательные функции
-    function escape(s) {
-        let t = document.createElement('div');
-        t.textContent = s;
-        return t.innerHTML;
-    }
-
-    function showToast(text) {
-        const t = document.getElementById('toast');
-        t.textContent = text;
-        t.style.display = 'block';
-        setTimeout(() => t.style.display = 'none', 3000);
-    }
 
     // Инициализация
+    document.getElementById('nameInp').addEventListener('blur', updatePresence);
     if (myName) updatePresence();
-    setInterval(() => { if(myName) updatePresence(); }, 20000); // Heartbeat
 </script>
-
 </body>
 </html>
