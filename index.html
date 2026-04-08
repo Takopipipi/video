@@ -3,189 +3,284 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master Cinema Sync</title>
+    <title>Cinema Party 🍿</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://vk.com/js/api/videoplayer.js"></script>
     <style>
-        :root { --bg: #000; --panel: #111; --accent: #7c4dff; --text: #eee; }
+        :root { --bg: #0a0a0a; --panel: #161616; --accent: #7c4dff; --danger: #ff4444; --text: #eee; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* Видео */
-        .video-box { width: 100%; background: #000; aspect-ratio: 16/9; position: relative; border-bottom: 1px solid #222; }
-        #player_container { width: 100%; height: 100%; }
-        iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
 
-        /* Панель */
-        .top-bar { background: var(--panel); padding: 6px; display: flex; gap: 5px; align-items: center; border-bottom: 1px solid #333; }
-        input { background: #222; border: 1px solid #444; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px; outline: none; }
-        #urlInp { flex: 1; }
-        #nameInp { width: 80px; }
-        button { background: var(--accent); color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        /* ЛОББИ */
+        #lobby {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 100; padding: 20px;
+        }
+        .lobby-card { background: var(--panel); padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; text-align: center; border: 1px solid #333; }
+        .lobby-card h1 { margin-bottom: 20px; color: var(--accent); }
         
-        .role-badge { font-size: 9px; padding: 2px 5px; border-radius: 3px; background: #333; color: #aaa; text-transform: uppercase; }
-        .role-master { background: #d32f2f; color: #fff; }
+        /* КНОПКИ И ИНПУТЫ */
+        input { background: #222; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 10px; outline: none; }
+        button { background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
+        button:hover { filter: brightness(1.2); }
+        button.sec { background: #333; }
+        button.danger { background: var(--danger); }
 
-        /* Чат */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #080808; overflow: hidden; }
-        #online-label { font-size: 10px; color: #666; padding: 5px 10px; border-bottom: 1px solid #111; }
-        #messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
-        .m { max-width: 85%; padding: 6px 10px; border-radius: 10px; font-size: 13px; line-height: 1.4; }
+        /* ИНТЕРФЕЙС КОМНАТЫ */
+        #room-ui { display: none; height: 100vh; flex-direction: column; }
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+        
+        .video-side { flex: 3; display: flex; flex-direction: column; background: #000; }
+        #player_container { flex: 1; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* АДМИН ПАНЕЛЬ */
+        .admin-panel { background: var(--panel); padding: 10px; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; }
+        .admin-panel input { margin-bottom: 0; padding: 8px; font-size: 12px; }
+        .admin-panel button { width: auto; margin-bottom: 0; padding: 8px 15px; font-size: 12px; }
+
+        /* ЧАТ */
+        .chat-side { flex: 1; min-width: 320px; background: #0f0f0f; border-left: 1px solid #222; display: flex; flex-direction: column; }
+        #online-list { font-size: 10px; color: #666; padding: 5px 10px; background: #111; }
+        #messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+        .m { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; }
         .m.own { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 2px; }
-        .m.other { align-self: flex-start; background: #222; border-bottom-left-radius: 2px; }
-        .m-n { font-size: 10px; opacity: 0.5; display: block; }
+        .m.other { align-self: flex-start; background: #262626; border-bottom-left-radius: 2px; }
+        .m-n { font-size: 10px; opacity: 0.5; display: block; margin-bottom: 2px; }
 
-        .chat-input { padding: 8px; display: flex; gap: 5px; background: var(--panel); border-top: 1px solid #222; }
-        .chat-input input { flex: 1; font-size: 14px; }
+        .chat-input-area { padding: 10px; background: var(--panel); display: flex; gap: 5px; border-top: 1px solid #333; }
+        .chat-input-area input { margin-bottom: 0; font-size: 14px; }
 
-        @media (min-width: 768px) {
-            body { flex-direction: row; }
-            .video-box { flex: 3; aspect-ratio: auto; }
-            .chat-area { flex: 1; border-left: 1px solid #333; }
+        .badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #333; margin-right: 5px; vertical-align: middle; }
+        .badge-master { background: #d32f2f; }
+
+        @media (max-width: 768px) {
+            .main-layout { flex-direction: column; overflow-y: auto; }
+            .chat-side { flex: none; height: 400px; min-width: 100%; }
+            .admin-panel { flex-wrap: wrap; }
+            .admin-panel input { flex: 1; }
         }
     </style>
 </head>
 <body>
 
-    <div class="video-box">
-        <div id="player_container">
-            <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#444;">Вставьте ссылку на видео</div>
+    <!-- ЛОББИ -->
+    <div id="lobby">
+        <div class="lobby-card">
+            <h1>Cinema Party 🍿</h1>
+            <input type="text" id="userName" placeholder="Ваше имя">
+            <button onclick="createRoom()">Создать комнату</button>
+            <div style="margin: 15px 0; color: #555;">— ИЛИ —</div>
+            <input type="text" id="roomJoinId" placeholder="ID комнаты">
+            <button class="sec" onclick="joinRoomById()">Войти по ID</button>
         </div>
     </div>
 
-    <div class="chat-area">
-        <div class="top-bar">
-            <span id="roleLabel" class="role-badge">Зритель</span>
-            <input type="text" id="nameInp" placeholder="Имя">
-            <input type="text" id="urlInp" placeholder="Ссылка VK...">
-            <button onclick="setVideo()">OK</button>
+    <!-- ИНТЕРФЕЙС КОМНАТЫ -->
+    <div id="room-ui">
+        <!-- Панель управления (только для Мастера) -->
+        <div id="master-tools" class="admin-panel" style="display: none;">
+            <span class="badge badge-master">ВЫ АДМИН</span>
+            <input type="text" id="newVideoUrl" placeholder="Ссылка на видео VK...">
+            <button onclick="updateVideo()">Сменить видео</button>
+            <button class="sec" onclick="copyInvite()">🔗 Ссылка</button>
+            <button class="danger" onclick="deleteRoom()">Удалить комнату</button>
         </div>
-        <div id="online-label">Онлайн: ...</div>
-        <div id="messages"></div>
-        <div class="chat-input">
-            <input type="text" id="msgInp" placeholder="Текст..." onkeypress="if(event.key==='Enter') sendMsg()">
-            <button onclick="sendMsg()">➤</button>
+
+        <div class="main-layout">
+            <div class="video-side">
+                <div id="player_container">
+                    <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#444;">Ждем выбора видео...</div>
+                </div>
+            </div>
+
+            <div class="chat-side">
+                <div id="online-list">Участники: ...</div>
+                <div id="messages"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="msgInp" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+                    <button onclick="sendMsg()" style="width: auto;">➤</button>
+                </div>
+            </div>
         </div>
     </div>
 
 <script>
-    // --- ТВОИ ДАННЫЕ ---
+    // --- ТВОЙ FIREBASE ---
     const firebaseConfig = { databaseURL: "https://watch-together-vk-default-rtdb.europe-west1.firebasedatabase.app/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let myId = 'u' + Math.random().toString(36).substring(2, 6);
-    let myName = localStorage.getItem('cName') || '';
-    let roomId = new URLSearchParams(window.location.search).get('r') || "CINEMA";
-    let roomRef = db.ref('rooms/' + roomId);
+    // Переменные сессии
+    let myId = localStorage.getItem('cinema_uid') || 'u' + Math.random().toString(36).substring(2, 7);
+    localStorage.setItem('cinema_uid', myId);
     
-    let isMaster = false;
+    let myName = localStorage.getItem('cinema_name') || '';
+    let currentRoomId = null;
+    let roomRef = null;
     let player = null;
+    let isMaster = false;
     let lastUrl = "";
 
-    document.getElementById('nameInp').value = myName;
+    document.getElementById('userName').value = myName;
 
-    // 1. ЛОГИКА ОПРЕДЕЛЕНИЯ МАСТЕРА
-    function checkMaster() {
-        roomRef.child('master').on('value', s => {
-            const masterId = s.val();
-            if (!masterId) {
-                // Если мастера нет, занимаем трон
-                roomRef.child('master').set(myId);
-                roomRef.child('master').onDisconnect().remove();
+    // 1. ЛОГИКА КОМНАТ
+    function createRoom() {
+        const name = document.getElementById('userName').value.trim();
+        if (!name) return alert("Введите имя!");
+        saveName(name);
+
+        const id = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const ref = db.ref('rooms/' + id);
+        ref.set({
+            meta: { creator: myId, createdAt: Date.now() },
+            state: { url: "", time: 0, status: "pause" }
+        }).then(() => enterRoom(id));
+    }
+
+    function joinRoomById() {
+        const id = document.getElementById('roomJoinId').value.trim().toUpperCase();
+        if (!id) return alert("Введите ID комнаты!");
+        enterRoom(id);
+    }
+
+    function enterRoom(id) {
+        currentRoomId = id;
+        roomRef = db.ref('rooms/' + id);
+
+        // Проверяем существование комнаты
+        roomRef.once('value', s => {
+            if (!s.exists()) {
+                alert("Комната не найдена!");
+                window.location.search = "";
+                return;
             }
-            isMaster = (masterId === myId);
-            const label = document.getElementById('roleLabel');
-            label.textContent = isMaster ? "ГЛАВНЫЙ" : "ЗРИТЕЛЬ";
-            label.className = "role-badge " + (isMaster ? "role-master" : "");
+            
+            const data = s.val();
+            isMaster = (data.meta.creator === myId);
+            
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('room-ui').style.display = 'flex';
+            if (isMaster) document.getElementById('master-tools').style.display = 'flex';
+            
+            window.history.replaceState({}, '', '?r=' + id);
+            initRoomLogic();
         });
     }
 
-    // 2. СИНХРОНИЗАЦИЯ ПЛЕЕРА
-    roomRef.child('state').on('value', s => {
-        const data = s.val();
-        if (!data) return;
+    // 2. СИНХРОНИЗАЦИЯ
+    function initRoomLogic() {
+        // Следим за существованием комнаты (если админ удалил)
+        roomRef.on('value', s => {
+            if (!s.exists()) {
+                alert("Комната удалена владельцем!");
+                location.reload();
+            }
+        });
 
-        // Если сменилась ссылка
-        if (data.url !== lastUrl) {
-            lastUrl = data.url;
-            const container = document.getElementById('player_container');
-            container.innerHTML = `<iframe id="vk_ifr" src="${data.url}&js_api=1" allow="autoplay; fullscreen"></iframe>`;
-            setTimeout(() => {
-                player = VK.VideoPlayer(document.getElementById('vk_ifr'));
-            }, 2000);
-        }
+        // Слушаем состояние плеера
+        roomRef.child('state').on('value', s => {
+            const data = s.val();
+            if (!data || !data.url) return;
 
-        // Если мы зритель — слушаем Мастера
-        if (!isMaster && player) {
-            if (data.status === 'play') player.play();
-            if (data.status === 'pause') player.pause();
-            
-            player.getCurrentTime(myTime => {
-                if (Math.abs(myTime - data.time) > 3) {
-                    player.seek(data.time);
-                }
-            });
-        }
-    });
+            if (data.url !== lastUrl) {
+                lastUrl = data.url;
+                document.getElementById('player_container').innerHTML = `<iframe id="vk_ifr" src="${data.url}&js_api=1" allow="autoplay; fullscreen"></iframe>`;
+                setTimeout(() => { player = VK.VideoPlayer(document.getElementById('vk_ifr')); }, 2000);
+            }
 
-    // Если мы МАСТЕР — отправляем данные в базу
-    setInterval(() => {
-        if (isMaster && player) {
-            player.getCurrentTime(t => {
-                player.getState(state => {
-                    roomRef.child('state').update({
-                        time: t,
-                        status: state, // 'play' или 'pause'
-                        url: lastUrl
+            if (!isMaster && player) {
+                if (data.status === 'play') player.play();
+                if (data.status === 'pause') player.pause();
+                player.getCurrentTime(t => {
+                    if (Math.abs(t - data.time) > 3) player.seek(data.time);
+                });
+            }
+        });
+
+        // Если МАСТЕР - отправляем время
+        setInterval(() => {
+            if (isMaster && player) {
+                player.getCurrentTime(t => {
+                    player.getState(st => {
+                        roomRef.child('state').update({ time: t, status: st, url: lastUrl });
                     });
                 });
-            });
-        }
-    }, 2000); // Каждые 2 секунды
+            }
+        }, 2000);
 
-    function setVideo() {
-        const url = document.getElementById('urlInp').value;
+        // Чат
+        roomRef.child('messages').limitToLast(50).on('child_added', s => {
+            const d = s.val();
+            const div = document.createElement('div');
+            div.className = `m ${d.u === myId ? 'own' : 'other'}`;
+            div.innerHTML = `<span class="m-n">${d.n}</span>${d.t}`;
+            const box = document.getElementById('messages');
+            box.appendChild(div); box.scrollTop = box.scrollHeight;
+        });
+
+        // Онлайн
+        setInterval(() => {
+            const name = localStorage.getItem('cinema_name') || 'Гость';
+            roomRef.child('users').child(myId).set({ name: name, last: Date.now() });
+        }, 10000);
+
+        roomRef.child('users').on('value', s => {
+            const users = Object.values(s.val() || {}).map(u => u.name).join(', ');
+            document.getElementById('online-list').textContent = 'В комнате: ' + users;
+        });
+    }
+
+    // 3. ФУНКЦИИ МАСТЕРА
+    function updateVideo() {
+        const url = document.getElementById('newVideoUrl').value.trim();
         const match = url.match(/video(-?\d+_\d+)/);
         if (match) {
             const v = match[1].split('_');
             const embed = `https://vk.com/video_ext.php?oid=${v[0]}&id=${v[1]}&hd=2&autoplay=1`;
             roomRef.child('state').set({ url: embed, time: 0, status: 'play' });
-            document.getElementById('urlInp').value = '';
+            document.getElementById('newVideoUrl').value = '';
+        } else {
+            alert("Некорректная ссылка ВК");
         }
     }
 
-    // 3. ЧАТ И ОНЛАЙН
+    function deleteRoom() {
+        if (confirm("Удалить комнату навсегда для всех?")) {
+            roomRef.remove().then(() => location.reload());
+        }
+    }
+
+    // 4. ДОП. ФУНКЦИИ
     function sendMsg() {
         const t = document.getElementById('msgInp').value.trim();
-        myName = document.getElementById('nameInp').value.trim() || 'Гость';
-        localStorage.setItem('cName', myName);
-        if (t) roomRef.child('messages').push({ n: myName, t: t, u: myId });
+        if (!t) return;
+        const name = localStorage.getItem('cinema_name') || 'Гость';
+        roomRef.child('messages').push({ n: name, t: t, u: myId });
         document.getElementById('msgInp').value = '';
     }
 
-    roomRef.child('messages').limitToLast(30).on('child_added', s => {
-        const d = s.val();
-        const div = document.createElement('div');
-        div.className = `m ${d.u === myId ? 'own' : 'other'}`;
-        div.innerHTML = `<span class="m-n">${d.n}</span>${d.t}`;
-        const box = document.getElementById('messages');
-        box.appendChild(div); box.scrollTop = box.scrollHeight;
-    });
+    function saveName(n) {
+        localStorage.setItem('cinema_name', n);
+        myName = n;
+    }
 
-    setInterval(() => {
-        const name = document.getElementById('nameInp').value || myName || 'Гость';
-        roomRef.child('users').child(myId).set({ name: name, last: Date.now() });
-    }, 10000);
+    function copyInvite() {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url);
+        alert("Ссылка на комнату скопирована!");
+    }
 
-    roomRef.child('users').on('value', s => {
-        const users = Object.values(s.val() || {}).map(u => u.name).join(', ');
-        document.getElementById('online-label').textContent = 'В комнате: ' + users;
-    });
-
-    checkMaster();
-    if (!window.location.search.includes('r=')) window.history.replaceState({}, '', '?r=' + roomId);
+    // Авто-вход по ссылке
+    const qRoom = new URLSearchParams(window.location.search).get('r');
+    if (qRoom && myName) enterRoom(qRoom);
+    else if (qRoom && !myName) {
+        document.getElementById('lobby').style.display = 'flex';
+        document.getElementById('roomJoinId').value = qRoom;
+        alert("Введите имя, чтобы войти в комнату");
+    }
 </script>
 </body>
 </html>
